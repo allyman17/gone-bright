@@ -201,6 +201,44 @@ const App: React.FC = () => {
     fetchData(); // Refresh to be sure
   };
 
+  const setRoomBrightness = async (roomId: string, brightness: number) => {
+    if (!hueService) return;
+    // Find lights in room
+    const room = state.rooms.find(r => r.id === roomId);
+    if (!room) return;
+    
+    // Get device IDs from room children
+    const deviceIds = room.children
+        .filter(child => child.rtype === 'device')
+        .map(child => child.rid);
+    
+    // Map devices to light IDs
+    const lightIds: string[] = [];
+    deviceIds.forEach(deviceId => {
+      const deviceLights = deviceToLightMap.get(deviceId) || [];
+      lightIds.push(...deviceLights);
+    });
+    
+    if (lightIds.length === 0) return;
+    
+    // Optimistic update for all lights in room
+    setState(prev => ({
+        ...prev,
+        lights: prev.lights.map(l => 
+            lightIds.includes(l.id) 
+                ? { ...l, dimming: { ...l.dimming, brightness } }
+                : l
+        )
+    }));
+    
+    // Update all lights in room via API
+    const promises = lightIds.map(lightId => 
+        hueService.updateLight(lightId, { dimming: { brightness } })
+    );
+        
+    await Promise.all(promises);
+  };
+
   const activateScene = async (sceneId: string) => {
     if (!hueService) return;
     await hueService.activateScene(sceneId);
@@ -231,6 +269,7 @@ const App: React.FC = () => {
                         deviceToLightMap={deviceToLightMap} 
                         onRoomToggle={toggleRoom}
                         onRoomClick={(roomId) => setSelectedRoomId(roomId)}
+                        onRoomBrightness={setRoomBrightness}
                     />
                     {selectedRoomId && (
                         <SceneModal

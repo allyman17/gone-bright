@@ -1,7 +1,7 @@
 import React from 'react';
 import { HueRoom, HueLight } from '../types';
-import { Card, Toggle } from './ui';
-import { Home, Power } from 'lucide-react';
+import { Card, Toggle, Slider } from './ui';
+import { Home } from 'lucide-react';
 
 interface DashboardProps {
   rooms: HueRoom[];
@@ -9,9 +9,10 @@ interface DashboardProps {
   deviceToLightMap: Map<string, string[]>;
   onRoomToggle: (roomId: string, on: boolean) => void;
   onRoomClick: (roomId: string) => void;
+  onRoomBrightness: (roomId: string, brightness: number) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, deviceToLightMap, onRoomToggle, onRoomClick }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, deviceToLightMap, onRoomToggle, onRoomClick, onRoomBrightness }) => {
   // Helper to get room status
   const getRoomState = (room: HueRoom) => {
     // Get device IDs from room children
@@ -41,7 +42,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, deviceToLig
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {rooms.map(room => {
-            const { anyOn, count } = getRoomState(room);
+            const { anyOn, avgBrightness, count } = getRoomState(room);
             return (
                 <Card 
                     key={room.id} 
@@ -64,9 +65,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, deviceToLig
                         />
                     </div>
 
-                    <div>
+                    <div className="mb-4">
                         <h3 className="text-lg font-semibold text-zinc-100">{room.metadata.name}</h3>
                         <p className="text-sm text-zinc-500">{count} lights • {anyOn ? 'On' : 'Off'}</p>
+                    </div>
+
+                    {/* Brightness Slider */}
+                    <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between text-xs text-zinc-500">
+                            <span>Brightness</span>
+                            <span>{Math.round(avgBrightness)}%</span>
+                        </div>
+                        <Slider 
+                            value={avgBrightness} 
+                            onChange={(val) => onRoomBrightness(room.id, val)}
+                            max={100}
+                        />
                     </div>
 
                     {/* Quick indicator glow */}
