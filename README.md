@@ -18,3 +18,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1-aWXiEHNWSVPmeWLuTC_jH
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Features
+
+- **Persistent Connection**: Your Hue Bridge connection details are saved locally and automatically restored when you reopen the app
+- **Demo Mode**: Try the app without a physical Hue Bridge
+- **Real-time Control**: Control lights, rooms, and scenes with instant feedback

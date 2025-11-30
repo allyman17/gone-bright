@@ -12,6 +12,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
   const [error, setError] = useState<string | undefined>();
+  const [isInitializing, setIsInitializing] = useState(true);
   
   const [hueService, setHueService] = useState<HueService | null>(null);
   
@@ -23,6 +24,47 @@ const App: React.FC = () => {
     rooms: [],
     scenes: []
   });
+
+  // Actions
+  const handleConnect = useCallback(async (config: BridgeConfig, skipSave = false) => {
+    setStatus(ConnectionStatus.CONNECTING);
+    try {
+      const service = new HueService(config, false);
+      // Test connection
+      await service.fetchResource('resource/light');
+      setHueService(service);
+      setState(prev => ({ ...prev, bridge: config, isConnected: true, isDemo: false }));
+      setStatus(ConnectionStatus.CONNECTED);
+      
+      // Save config for next time
+      if (!skipSave && (window as any).electron?.config?.save) {
+        await (window as any).electron.config.save(config);
+      }
+    } catch (e) {
+      setStatus(ConnectionStatus.ERROR);
+      setError("Connection failed. Ensure IP is correct, User is valid, and HTTPS cert is accepted.");
+    }
+  }, []);
+
+  // Load saved config on startup
+  useEffect(() => {
+    const loadSavedConfig = async () => {
+      try {
+        if ((window as any).electron?.config?.load) {
+          const result = await (window as any).electron.config.load();
+          if (result.success && result.config) {
+            // Auto-connect with saved config
+            await handleConnect(result.config, true);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load saved config:', e);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+    loadSavedConfig();
+  }, [handleConnect]);
 
   // Initialization & Polling
   const fetchData = useCallback(async () => {
@@ -54,22 +96,6 @@ const App: React.FC = () => {
     }
   }, [status, hueService, fetchData]);
 
-  // Actions
-  const handleConnect = async (config: BridgeConfig) => {
-    setStatus(ConnectionStatus.CONNECTING);
-    try {
-      const service = new HueService(config, false);
-      // Test connection
-      await service.fetchResource('resource/light');
-      setHueService(service);
-      setState(prev => ({ ...prev, bridge: config, isConnected: true, isDemo: false }));
-      setStatus(ConnectionStatus.CONNECTED);
-    } catch (e) {
-      setStatus(ConnectionStatus.ERROR);
-      setError("Connection failed. Ensure IP is correct, User is valid, and HTTPS cert is accepted.");
-    }
-  };
-
   const handleDemo = async () => {
     const service = new HueService(null, true);
     setHueService(service);
@@ -78,11 +104,16 @@ const App: React.FC = () => {
     // Initial fetch handled by effect
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
     setHueService(null);
     setState(prev => ({ ...prev, isConnected: false, lights: [], rooms: [], scenes: [] }));
     setStatus(ConnectionStatus.DISCONNECTED);
     setError(undefined);
+    
+    // Clear saved config
+    if ((window as any).electron?.config?.clear) {
+      await (window as any).electron.config.clear();
+    }
   };
 
   const updateLight = async (id: string, payload: any) => {
@@ -127,6 +158,14 @@ const App: React.FC = () => {
 
   // Render Content based on Route/Tab
   const renderContent = () => {
+    if (isInitializing) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-zinc-950">
+          <div className="text-zinc-400">Loading...</div>
+        </div>
+      );
+    }
+    
     if (!state.isConnected) {
         return <Connect onConnect={handleConnect} onDemo={handleDemo} loading={status === ConnectionStatus.CONNECTING} error={error} />;
     }

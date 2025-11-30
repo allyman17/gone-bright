@@ -1,10 +1,14 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import * as https from 'https';
+import * as fs from 'fs';
 
 let mainWindow: BrowserWindow | null = null;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+// Config file path
+const configPath = path.join(app.getPath('userData'), 'bridge-config.json');
 
 function createWindow() {
   // const preloadPath = path.join(__dirname, 'preload.mjs');
@@ -83,6 +87,44 @@ ipcMain.handle('hue:fetch', async (_event, url: string, options: any) => {
 
     req.end();
   });
+});
+
+// Save bridge config
+ipcMain.handle('config:save', async (_event, config: any) => {
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save config:', error);
+    return { success: false, error: String(error) };
+  }
+});
+
+// Load bridge config
+ipcMain.handle('config:load', async () => {
+  try {
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, 'utf-8');
+      return { success: true, config: JSON.parse(data) };
+    }
+    return { success: true, config: null };
+  } catch (error) {
+    console.error('Failed to load config:', error);
+    return { success: false, error: String(error) };
+  }
+});
+
+// Clear bridge config
+ipcMain.handle('config:clear', async () => {
+  try {
+    if (fs.existsSync(configPath)) {
+      fs.unlinkSync(configPath);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to clear config:', error);
+    return { success: false, error: String(error) };
+  }
 });
 
 // Ignore certificate errors for local Hue Bridge (self-signed cert)

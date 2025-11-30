@@ -13,6 +13,11 @@ contextBridge.exposeInMainWorld('electron', {
   },
   hue: {
     fetch: (url: string, options: any) => ipcRenderer.invoke('hue:fetch', url, options)
+  },
+  config: {
+    save: (config: any) => ipcRenderer.invoke('config:save', config),
+    load: () => ipcRenderer.invoke('config:load'),
+    clear: () => ipcRenderer.invoke('config:clear')
   }
 });
 

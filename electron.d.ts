@@ -17,6 +17,11 @@ export interface ElectronAPI {
       error?: string;
     }>;
   };
+  config: {
+    save: (config: any) => Promise<{ success: boolean; error?: string }>;
+    load: () => Promise<{ success: boolean; config?: any; error?: string }>;
+    clear: () => Promise<{ success: boolean; error?: string }>;
+  };
 }
 
 declare global {

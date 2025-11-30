@@ -4,7 +4,7 @@ import { Wifi, AlertCircle, Key } from 'lucide-react';
 import { BridgeConfig } from '../types';
 
 interface ConnectProps {
-  onConnect: (config: BridgeConfig) => void;
+  onConnect: (config: BridgeConfig, skipSave?: boolean) => void;
   onDemo: () => void;
   loading: boolean;
   error?: string;
