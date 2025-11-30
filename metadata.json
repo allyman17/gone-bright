@@ -1,0 +1,5 @@
+{
+  "name": "Gone Bright - Hue Controller",
+  "description": "A modern, Electron-ready Philips Hue controller with Gemini AI integration for natural language lighting control.",
+  "requestFramePermissions": []
+}
