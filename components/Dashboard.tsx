@@ -6,15 +6,28 @@ import { Home, Power } from 'lucide-react';
 interface DashboardProps {
   rooms: HueRoom[];
   lights: HueLight[];
+  deviceToLightMap: Map<string, string[]>;
   onRoomToggle: (roomId: string, on: boolean) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, onRoomToggle }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, deviceToLightMap, onRoomToggle }) => {
   // Helper to get room status
   const getRoomState = (room: HueRoom) => {
-    const roomLights = lights.filter(l => room.children.some(c => c.rid === l.id));
+    // Get device IDs from room children
+    const deviceIds = room.children.filter(c => c.rtype === 'device').map(c => c.rid);
+    
+    // Map devices to light IDs
+    const lightIds: string[] = [];
+    deviceIds.forEach(deviceId => {
+      const deviceLights = deviceToLightMap.get(deviceId) || [];
+      lightIds.push(...deviceLights);
+    });
+    
+    // Get the actual light objects
+    const roomLights = lights.filter(l => lightIds.includes(l.id));
     const anyOn = roomLights.some(l => l.on.on);
     const avgBrightness = roomLights.reduce((acc, l) => acc + (l.dimming?.brightness || 0), 0) / (roomLights.length || 1);
+    
     return { anyOn, avgBrightness, count: roomLights.length };
   };
 
@@ -36,7 +49,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, onRoomToggl
                         <div className="p-2 bg-zinc-800 rounded-lg text-zinc-400">
                             <Home className="w-6 h-6" />
                         </div>
-                        <Toggle checked={anyOn} onChange={(val) => onRoomToggle(room.id, val)} />
+                        <Toggle 
+                            checked={anyOn} 
+                            onChange={(val) => {
+                                console.log('Toggle clicked for room:', room.metadata.name, 'New value:', val);
+                                onRoomToggle(room.id, val);
+                            }} 
+                        />
                     </div>
 
                     <div>

@@ -24,6 +24,8 @@ const App: React.FC = () => {
     rooms: [],
     scenes: []
   });
+  
+  const [deviceToLightMap, setDeviceToLightMap] = useState<Map<string, string[]>>(new Map());
 
   // Actions
   const handleConnect = useCallback(async (config: BridgeConfig, skipSave = false) => {
@@ -70,9 +72,25 @@ const App: React.FC = () => {
   const fetchData = useCallback(async () => {
     if (!hueService) return;
     try {
-      const lightsData = await hueService.fetchResource('resource/light');
-      const roomsData = await hueService.fetchResource('resource/room');
-      const scenesData = await hueService.fetchResource('resource/scene');
+      const [lightsData, roomsData, scenesData, devicesData] = await Promise.all([
+        hueService.fetchResource('resource/light'),
+        hueService.fetchResource('resource/room'),
+        hueService.fetchResource('resource/scene'),
+        hueService.fetchResource('resource/device')
+      ]);
+      
+      // Map devices to their lights
+      const deviceToLights = new Map<string, string[]>();
+      devicesData.data.forEach((device: any) => {
+        const lightServices = device.services?.filter((s: any) => s.rtype === 'light') || [];
+        const lightIds = lightServices.map((service: any) => service.rid);
+        if (lightIds.length > 0) {
+          deviceToLights.set(device.id, lightIds);
+        }
+      });
+      
+      console.log('Device to light mapping:', Object.fromEntries(deviceToLights));
+      setDeviceToLightMap(deviceToLights);
       
       setState(prev => ({
         ...prev,
@@ -142,12 +160,42 @@ const App: React.FC = () => {
     const room = state.rooms.find(r => r.id === roomId);
     if (!room) return;
     
-    // Update all lights in room
-    const promises = room.children
-        .filter(child => child.rtype === 'light')
-        .map(child => updateLight(child.rid, { on: { on } }));
+    // Get device IDs from room children
+    const deviceIds = room.children
+        .filter(child => child.rtype === 'device')
+        .map(child => child.rid);
+    
+    // Map devices to light IDs
+    const lightIds: string[] = [];
+    deviceIds.forEach(deviceId => {
+      const deviceLights = deviceToLightMap.get(deviceId) || [];
+      lightIds.push(...deviceLights);
+    });
+    
+    console.log('Toggling room:', room.metadata.name, 'Light IDs:', lightIds, 'On:', on);
+    
+    if (lightIds.length === 0) {
+      console.warn('No lights found for room:', room.metadata.name);
+      return;
+    }
+    
+    // Optimistic update for all lights in room
+    setState(prev => ({
+        ...prev,
+        lights: prev.lights.map(l => 
+            lightIds.includes(l.id) 
+                ? { ...l, on: { ...l.on, on } }
+                : l
+        )
+    }));
+    
+    // Update all lights in room via API
+    const promises = lightIds.map(lightId => 
+        hueService.updateLight(lightId, { on: { on } })
+    );
         
     await Promise.all(promises);
+    fetchData(); // Refresh to be sure
   };
 
   const activateScene = async (sceneId: string) => {
@@ -172,7 +220,7 @@ const App: React.FC = () => {
 
     switch (activeTab) {
         case 'dashboard':
-            return <Dashboard rooms={state.rooms} lights={state.lights} onRoomToggle={toggleRoom} />;
+            return <Dashboard rooms={state.rooms} lights={state.lights} deviceToLightMap={deviceToLightMap} onRoomToggle={toggleRoom} />;
         case 'lights':
             return (
                 <div className="p-6">
