@@ -6,13 +6,14 @@ import { LightControl } from './components/LightControl';
 import { HueService } from './services/hueService';
 import { AppState, BridgeConfig, ConnectionStatus, HueLight, HueRoom, HueScene } from './types';
 import { Card, Button } from './components/ui';
-import { Play } from 'lucide-react';
+import { Play, Search } from 'lucide-react';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
   const [error, setError] = useState<string | undefined>();
   const [isInitializing, setIsInitializing] = useState(true);
+  const [lightSearchQuery, setLightSearchQuery] = useState('');
   
   const [hueService, setHueService] = useState<HueService | null>(null);
   
@@ -222,14 +223,38 @@ const App: React.FC = () => {
         case 'dashboard':
             return <Dashboard rooms={state.rooms} lights={state.lights} deviceToLightMap={deviceToLightMap} onRoomToggle={toggleRoom} />;
         case 'lights':
+            const filteredLights = state.lights.filter(light => 
+                light.metadata.name.toLowerCase().includes(lightSearchQuery.toLowerCase())
+            );
             return (
-                <div className="p-6">
-                    <h2 className="text-2xl font-bold text-white mb-6">All Lights</h2>
+                <div className="p-6 space-y-6">
+                    <div>
+                        <h2 className="text-2xl font-bold text-white mb-1">All Lights</h2>
+                        <p className="text-zinc-400">{state.lights.length} lights total</p>
+                    </div>
+                    
+                    <div className="relative max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+                        <input
+                            type="text"
+                            placeholder="Search lights..."
+                            value={lightSearchQuery}
+                            onChange={(e) => setLightSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-200 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                    </div>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {state.lights.map(light => (
+                        {filteredLights.map(light => (
                             <LightControl key={light.id} light={light} onUpdate={updateLight} />
                         ))}
                     </div>
+                    
+                    {filteredLights.length === 0 && lightSearchQuery && (
+                        <div className="text-center py-12 text-zinc-500">
+                            No lights found matching "{lightSearchQuery}"
+                        </div>
+                    )}
                 </div>
             );
         case 'scenes':
