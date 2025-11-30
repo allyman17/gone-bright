@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { Connect } from './components/Connect';
 import { Dashboard } from './components/Dashboard';
 import { LightControl } from './components/LightControl';
+import { SceneModal } from './components/SceneModal';
 import { HueService } from './services/hueService';
 import { AppState, BridgeConfig, ConnectionStatus, HueLight, HueRoom, HueScene } from './types';
 import { Card, Button } from './components/ui';
@@ -14,6 +15,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | undefined>();
   const [isInitializing, setIsInitializing] = useState(true);
   const [lightSearchQuery, setLightSearchQuery] = useState('');
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   
   const [hueService, setHueService] = useState<HueService | null>(null);
   
@@ -221,7 +223,25 @@ const App: React.FC = () => {
 
     switch (activeTab) {
         case 'dashboard':
-            return <Dashboard rooms={state.rooms} lights={state.lights} deviceToLightMap={deviceToLightMap} onRoomToggle={toggleRoom} />;
+            return (
+                <>
+                    <Dashboard 
+                        rooms={state.rooms} 
+                        lights={state.lights} 
+                        deviceToLightMap={deviceToLightMap} 
+                        onRoomToggle={toggleRoom}
+                        onRoomClick={(roomId) => setSelectedRoomId(roomId)}
+                    />
+                    {selectedRoomId && (
+                        <SceneModal
+                            room={state.rooms.find(r => r.id === selectedRoomId)!}
+                            scenes={state.scenes}
+                            onClose={() => setSelectedRoomId(null)}
+                            onActivateScene={activateScene}
+                        />
+                    )}
+                </>
+            );
         case 'lights':
             const filteredLights = state.lights.filter(light => 
                 light.metadata.name.toLowerCase().includes(lightSearchQuery.toLowerCase())
@@ -255,22 +275,6 @@ const App: React.FC = () => {
                             No lights found matching "{lightSearchQuery}"
                         </div>
                     )}
-                </div>
-            );
-        case 'scenes':
-            return (
-                <div className="p-6">
-                    <h2 className="text-2xl font-bold text-white mb-6">Scenes</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {state.scenes.map(scene => (
-                            <Card key={scene.id} className="flex items-center justify-between p-4 group hover:bg-zinc-800 transition-colors cursor-pointer" onClick={() => activateScene(scene.id)}>
-                                <span className="font-medium text-zinc-200">{scene.metadata.name}</span>
-                                <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100">
-                                    <Play className="w-4 h-4" />
-                                </Button>
-                            </Card>
-                        ))}
-                    </div>
                 </div>
             );
         default:

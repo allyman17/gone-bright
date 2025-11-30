@@ -8,9 +8,10 @@ interface DashboardProps {
   lights: HueLight[];
   deviceToLightMap: Map<string, string[]>;
   onRoomToggle: (roomId: string, on: boolean) => void;
+  onRoomClick: (roomId: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, deviceToLightMap, onRoomToggle }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, deviceToLightMap, onRoomToggle, onRoomClick }) => {
   // Helper to get room status
   const getRoomState = (room: HueRoom) => {
     // Get device IDs from room children
@@ -42,7 +43,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, deviceToLig
         {rooms.map(room => {
             const { anyOn, count } = getRoomState(room);
             return (
-                <Card key={room.id} className="relative overflow-hidden group">
+                <Card 
+                    key={room.id} 
+                    className="relative overflow-hidden group cursor-pointer hover:border-indigo-500/50 transition-all"
+                    onClick={() => onRoomClick(room.id)}
+                >
                     <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${anyOn ? 'bg-yellow-500' : 'bg-zinc-700'}`} />
                     
                     <div className="flex justify-between items-start mb-4">
@@ -54,7 +59,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ rooms, lights, deviceToLig
                             onChange={(val) => {
                                 console.log('Toggle clicked for room:', room.metadata.name, 'New value:', val);
                                 onRoomToggle(room.id, val);
-                            }} 
+                            }}
+                            onClick={(e) => e.stopPropagation()}
                         />
                     </div>
 

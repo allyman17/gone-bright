@@ -12,7 +12,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'lights', label: 'Lights', icon: Lightbulb },
-    { id: 'scenes', label: 'Scenes', icon: Play },
   ];
 
   return (
